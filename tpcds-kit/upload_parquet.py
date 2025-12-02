@@ -25,7 +25,8 @@ def upload_parquet_files(parquet_dir, test_mode, specific_file=None):
         's3',
         endpoint_url=s3_endpoint,
         aws_access_key_id=s3_access_key,
-        aws_secret_access_key=s3_secret_key
+        aws_secret_access_key=s3_secret_key,
+        verify=False
     )
 
     if specific_file:
@@ -51,25 +52,29 @@ def upload_parquet_files(parquet_dir, test_mode, specific_file=None):
                 return
     else:
         # Iterate through each file in the parquet directory
-        for filename in os.listdir(parquet_dir):
-            if filename.endswith(".parquet"):
-                file_path = os.path.join(parquet_dir, filename)
-                # Use the base name (without extension) as the table name
-                table_name = os.path.splitext(filename)[0]
-                # Define the S3 key as "table_name/filename.parquet"
-                key = f"{s3_folder}/{table_name}/{filename}"
-
-                if test_mode:
-                    print(f"TEST MODE: Source: {file_path}, Target: s3://{s3_bucket}/{key}")
-                else:
-                    print(f"Uploading {file_path} to s3://{s3_bucket}/{key}")
-                    try:
-                        s3.upload_file(file_path, s3_bucket, key)
-                        print("Upload successful")
-                    except NoCredentialsError:
-                        print("\033[91mCredentials not available. Please ensure S3_ACCESS_KEY and S3_SECRET_KEY are set.\033[0m")
-                        print("\033[91mHint: Try running 'tpcds.py cleanup' before attempting again.\033[0m")
-                        return
+        for root, dirs, files in os.walk(parquet_dir):
+            for filename in files:
+                if filename.endswith(".parquet"):
+                    absolute_path = os.path.join(root, filename)
+                    file_path = absolute_path.replace(parquet_dir, "")
+                    # print("file path:" + file_path)
+                    # print("file name:" + filename)
+                    # print("file root:" + root)
+                    # print("table name:" + file_path.split(os.sep)[0])
+                    # Define the S3 key as "file_path", including all level folders for partitioning, ie:
+                    # dbgen_version/partition_key=0/part-00000-d51598df-5887-4d3c-8145-0c9ec945fc00.c000.snappy.parquet
+                    key = f"{s3_folder}/{file_path}"
+                    if test_mode:
+                        print(f"TEST MODE: Source: {absolute_path}, Target: s3://{s3_bucket}/{key}")
+                    else:
+                        print(f"Uploading {absolute_path} to s3://{s3_bucket}/{key}")
+                        try:
+                            s3.upload_file(absolute_path, s3_bucket, key)
+                            print("Upload successful")
+                        except NoCredentialsError:
+                            print("\033[91mCredentials not available. Please ensure S3_ACCESS_KEY and S3_SECRET_KEY are set.\033[0m")
+                            print("\033[91mHint: Try running 'tpcds.py cleanup' before attempting again.\033[0m")
+                            return
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Upload Parquet files to S3-compatible storage")
