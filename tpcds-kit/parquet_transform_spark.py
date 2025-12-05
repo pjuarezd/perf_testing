@@ -5,7 +5,6 @@ from pyspark.sql import SparkSession
 from pyspark.sql.utils import AnalysisException
 from termcolor import colored
 import sys
-from pyspark.sql.functions import monotonically_increasing_id, expr
 
 # Load schema definitions
 schema_path = os.path.join(os.path.dirname(__file__), "tpcds_schema.json")
@@ -35,6 +34,8 @@ def calculate_partitions(file_path, base_partition_size=128 * 1024 * 1024):
     :return: Number of partitions.
     """
     file_size = os.path.getsize(file_path)
+    print(f"File size: {file_size} bytes")
+    print(f"Base partition size: {base_partition_size} bytes")
     return max(1, file_size // base_partition_size)
 
 def process_file(spark, file_path):
@@ -60,20 +61,15 @@ def process_file(spark, file_path):
         # Calculate the number of partitions based on file size
         num_partitions = calculate_partitions(file_path)
 
-        # Add a partitioning column (e.g., partition_key) based on row index
-        df = df.withColumn("partition_key", expr(f"monotonically_increasing_id() % {num_partitions}"))
+        print(f"Partitioning {file_path} into {num_partitions} partitions")
 
-        # repartition
+        # Repartition to control output file count and size
+        # This creates num_partitions Spark partitions, each written as a separate parquet file
         df = df.repartition(num_partitions)
-        # also is recommended to increase the global JAVA memory heap allocation an system wide:
-        # export _JAVA_OPTIONS="-Xmx500g"
 
-        # Write DataFrame to Parquet with partitioning
-        output_folder = os.path.join(output_dir, table_name)  # Remove .parquet from folder name
-        df.write.mode("overwrite").partitionBy("partition_key").parquet(output_folder)
-
-        # Remove the partitioning column after writing
-        df = df.drop("partition_key")
+        # Write DataFrame to Parquet (without partitionBy to avoid file explosion)
+        output_folder = os.path.join(output_dir, table_name)
+        df.write.mode("overwrite").parquet(output_folder)
 
         print(f"Successfully converted {file_path} to {output_folder} with {num_partitions} partitions")
     except AnalysisException as e:
