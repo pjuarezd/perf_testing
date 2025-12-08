@@ -1,6 +1,7 @@
 import os
 import argparse
 import boto3
+import urllib3
 from botocore.exceptions import NoCredentialsError
 from dotenv import load_dotenv
 
@@ -19,6 +20,8 @@ def upload_parquet_files(parquet_dir, test_mode, specific_file=None):
         print("\033[91mEnvironment variables S3_BUCKET_NAME, S3_ENDPOINT_URL, S3_ACCESS_KEY, and S3_SECRET_KEY must be set.\033[0m")
         print("\033[91mHint: Try running 'tpcds.py cleanup' before attempting again.\033[0m")
         return
+    # Disable TLS warnings from urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     # Create an S3 client using environment variables
     s3 = boto3.client(
