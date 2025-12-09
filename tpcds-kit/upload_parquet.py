@@ -60,9 +60,6 @@ def upload_parquet_files(parquet_dir, test_mode, specific_file=None):
                 if filename.endswith(".parquet"):
                     absolute_path = os.path.join(root, filename)
                     file_path = absolute_path.replace(parquet_dir, "")
-                    print("file path:" + file_path)
-                    print("file name:" + filename)
-                    print("file root:" + root)                    
                     # Define the S3 key as "file_path", including all level folders for partitioning, ie:
                     # dbgen_version/partition_key=0/part-00000-d51598df-5887-4d3c-8145-0c9ec945fc00.c000.snappy.parquet
                     key = f"{s3_folder}{file_path}"
