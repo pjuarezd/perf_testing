@@ -82,15 +82,21 @@ if __name__ == "__main__":
     parser.add_argument("--custom_dir", required=False, type=str, help="Directory for temporary files location, instead of default /tmp directory")
     args = parser.parse_args()
 
-    # Initialize Spark session
+    # Initialize Spark session with memory-safe settings
     spark = SparkSession.builder \
-        .config("spark.driver.memory", "8g") \
-        .config("spark.executor.memory", "8g") \
-        .config("spark.executor.memoryOverhead", "2g") \
+        .config("spark.driver.memory", "64g") \
+        .config("spark.executor.memory", "64g") \
+        .config("spark.executor.memoryOverhead", "8g") \
+        .config("spark.memory.fraction", "0.6") \
+        .config("spark.memory.storageFraction", "0.3") \
+        .config("spark.shuffle.spill.compress", "true") \
+        .config("spark.shuffle.compress", "true") \
+        .config("spark.default.parallelism", "64") \
+        .config("spark.sql.shuffle.partitions", "64") \
         .appName("TPC-DS Parquet Transformer") \
-        .master("local[*]")
+        .master("local[64]")
     
-    if args.custom_dir != "":
+    if args.custom_dir and args.custom_dir != "":
         spark = spark.config("spark.local.dir", args.custom_dir)
     
     spark = spark.getOrCreate()
